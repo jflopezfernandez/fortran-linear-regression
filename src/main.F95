@@ -31,23 +31,62 @@
 
 
         ! Prompt user to enter the name of the input file
-        WRITE (*,*) 'PLEASE ENTER FILE TO READ: '
-        READ (*,*) filename
+        WRITE (*,1000)
+1000    FORMAT (1X, 'THIS PROGRAM PERFORMS A LEAST-SQUARES FIT OF AN ', /, &
+          1X, 'INPUT DATA SET TO A STRAIGHT LINE. ENTER THE NAME', / &
+          1X, 'OF THE FILE CONTAINING THE INPUT (X,Y) PAIRS:   ')
 
-1000    FORMAT (' ', 'FILENAME: ', A)
-        WRITE (*,1000) filename
+        READ (*,1010) filename
+1010    FORMAT (A)        
+
 
         ! Open file
         OPEN (UNIT=IO_UNIT, FILE=filename, STATUS='OLD', IOSTAT=file_io_error_code)
 
-        IF (file_io_error_code > 0) THEN
+        ! Verify the file opened correctly
+ERROR:  IF (file_io_error_code > 0) THEN
           WRITE (*,*) '[ERROR] THE FILE COULD NOT BE OPENED. DOES IT EXIST? '
+
         ELSE IF (file_io_error_code < 0) THEN
           WRITE (*,*) '[ERROR] END OF FILE HAS BEEN REACHED. '
+
         ELSE
-          WRITE (*,*) 'FILE OPENED SUCCESSFULLY. '
-        END IF
+          WRITE (*,*) 'FILE OPENED SUCCESSFULLY. READING DATA...'
 
-        CLOSE (UNIT=IO_UNIT)
 
+          ! Read input
+          DO
+            READ (IO_UNIT, *, IOSTAT=file_io_error_code) x, y
+
+            ! Program returns an end of file error every time (errcode < 0)
+            IF (file_io_error_code > 0) EXIT
+
+            n = n + 1
+            sum_x = sum_x + x
+            sum_y = sum_y + y
+            sum_x2 = sum_x2 + (x**2)
+            sum_xy = sum_xy + (x * y)
+          END DO
+
+
+          ! Calculate slope and intercept
+          x_bar = sum_x / REAL(n)
+          y_bar = sum_y / REAL(n)
+
+          slope = (sum_xy - (sum_x * y_bar)) / (sum_x2 - (sum_x * x_bar))
+
+          y_int = y_bar - slope * x_bar
+
+
+          ! Notify user
+          WRITE (*,1030) slope, y_int, n
+1030      FORMAT ('REGRESSION COEFFICIENTS FOR THE LEAST-SQUARES LINE: ', &
+            /, 1X, ' SLOPE(m)     = ', F12.3, &
+            /, 1X, ' INTERCEPT(b) = ', F12.3, &
+            /, 1X, ' POINTS:      = ', I12)        
+
+
+          ! Close the input file and quit
+          CLOSE (UNIT=IO_UNIT)
+        END IF ERROR
       END PROGRAM
